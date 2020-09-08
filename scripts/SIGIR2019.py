@@ -31,51 +31,51 @@ sim_args, other_args = parser.parse_all_args(ranker_params)
 run_name = 'SIGIR2019/P-DBGD' 
 rankers.append((run_name, P_DBGD, other_args))
 
-run_name = 'SIGIR2019/P-MGD' 
-rankers.append((run_name, P_MGD, other_args))
+# run_name = 'SIGIR2019/P-MGD' 
+# rankers.append((run_name, P_MGD, other_args))
 
-ranker_params = {
-  'learning_rate_decay': 0.9999977,
-  'GRAD_SIZE':60,
-  'EXP_SIZE':25,
-  'TB_QUEUE_SIZE':10,
-  'TB_WINDOW_SIZE':50}
-sim_args, other_args = parser.parse_all_args(ranker_params)
+# ranker_params = {
+#   'learning_rate_decay': 0.9999977,
+#   'GRAD_SIZE':60,
+#   'EXP_SIZE':25,
+#   'TB_QUEUE_SIZE':10,
+#   'TB_WINDOW_SIZE':50}
+# sim_args, other_args = parser.parse_all_args(ranker_params)
 
-run_name = 'SIGIR2019/TD_NSGD' 
-rankers.append((run_name, TD_NSGD, other_args))
-
-
-# DBGD based algorithms with document space projection
-ranker_params = {
-  'learning_rate_decay': 0.9999977,
-  'k_initial': 3,
-  'k_increase': False,
-  'prev_qeury_len': 10}
-sim_args, other_args = parser.parse_all_args(ranker_params)
-
-run_name = 'SIGIR2019/P_DBGD_DSP' 
-rankers.append((run_name, P_DBGD_DSP, other_args))
-
-run_name = 'SIGIR2019/P_MGD_DSP' 
-rankers.append((run_name, P_MGD_DSP, other_args))
+# run_name = 'SIGIR2019/TD_NSGD' 
+# rankers.append((run_name, TD_NSGD, other_args))
 
 
+# # DBGD based algorithms with document space projection
+# ranker_params = {
+#   'learning_rate_decay': 0.9999977,
+#   'k_initial': 3,
+#   'k_increase': False,
+#   'prev_qeury_len': 10}
+# sim_args, other_args = parser.parse_all_args(ranker_params)
 
-# NSGD with document space projection
-ranker_params = {
-  'learning_rate_decay': 0.9999977,
-  'k_initial': 3,
-  'k_increase': False,
-  'GRAD_SIZE':60,
-  'EXP_SIZE':25,
-  'TB_QUEUE_SIZE':10,
-  'TB_WINDOW_SIZE':50,
-  'prev_qeury_len': 10}
-sim_args, other_args = parser.parse_all_args(ranker_params)
+# run_name = 'SIGIR2019/P_DBGD_DSP' 
+# rankers.append((run_name, P_DBGD_DSP, other_args))
 
-run_name = 'SIGIR2019/TD_NSGD_DSP' 
-rankers.append((run_name, TD_NSGD_DSP, other_args))
+# run_name = 'SIGIR2019/P_MGD_DSP' 
+# rankers.append((run_name, P_MGD_DSP, other_args))
+
+
+
+# # NSGD with document space projection
+# ranker_params = {
+#   'learning_rate_decay': 0.9999977,
+#   'k_initial': 3,
+#   'k_increase': False,
+#   'GRAD_SIZE':60,
+#   'EXP_SIZE':25,
+#   'TB_QUEUE_SIZE':10,
+#   'TB_WINDOW_SIZE':50,
+#   'prev_qeury_len': 10}
+# sim_args, other_args = parser.parse_all_args(ranker_params)
+
+# run_name = 'SIGIR2019/TD_NSGD_DSP' 
+# rankers.append((run_name, TD_NSGD_DSP, other_args))
 
 
 
