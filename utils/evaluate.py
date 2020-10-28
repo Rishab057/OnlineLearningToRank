@@ -3,6 +3,7 @@
 from numpy import log2
 from random import sample
 import numpy as np
+import math
 
 
 def get_dcg(ordered_labels):
@@ -26,6 +27,79 @@ def get_single_dcg_for_rankers(descending_rankings, document_labels, max_len):
     displayed_labels = document_labels[displayed_rankings]
     return np.sum((2 ** displayed_labels - 1) / np.log2(np.arange(displayed_labels.shape[1])
                   + 2)[None, :], axis=1)
+
+
+# Calculate NDCG with a single array of descending ranking and the corresponding labels.
+def get_ndcg_with_labels(ranking, labels, max_len, initial, is_test = False, impression = -1):
+
+    # if is_test and initial == 280:
+    #     print labels
+
+    idcg = get_idcg(np.asarray(labels), max_len)
+    if idcg==0:
+        return 0
+    nominators = [2. ** label - 1. for label in labels]
+    denominators = [math.log(r+2., 2) for r in ranking]
+    for i in range(len(ranking)):
+        if ranking[i]>=max_len:
+            nominators[i] = 0
+
+    ndcg = 0
+    for i in range(len(nominators)):
+        ndcg += (nominators[i] / denominators[i]) / idcg
+
+    if impression % 100 == 0:
+        print ndcg
+    return ndcg
+
+# Calculate NDCG with a single array of descending model_ranking and a descending ideal_ranking.
+# Assume that the first "max_len" documents in ideal_ranking has relevance score 1 and other documents
+# have relevance score 0.
+def get_ndcg_with_ranking(model_ranking, ideal_ranking, max_len, initial):
+    labels = [0 for i in range(len(model_ranking))]
+    displayed_ideal_ranking = ideal_ranking[:max_len]
+    for document in model_ranking:
+      if document in displayed_ideal_ranking and document<len(model_ranking):
+          labels[document] = 1
+
+    return get_ndcg_with_labels(model_ranking, labels, max_len, initial)
+
+def get_ndcg_with_ranking2(model_ranking, ideal_ranking, max_len, initial, impression):
+
+    r = [0 for i in range(len(model_ranking))]      #  [2,3,4,1,0]  => [5, 4, 0, 1, 3]
+    # print model_ranking
+    for i in range(len(model_ranking)):
+        if model_ranking[i] < len(r):
+            r[model_ranking[i]] = i
+
+    labels = [0 for i in range(len(model_ranking))]
+    displayed_ideal_ranking = []
+
+    displayed_ideal_ranking = ideal_ranking[:5]
+    
+    # if impression%2 == 0:
+    #     displayed_ideal_ranking = ideal_ranking[:5]
+    # else:
+    #     displayed_ideal_ranking = ideal_ranking[:max_len]
+
+    for document in r:
+      if document in displayed_ideal_ranking and document<len(model_ranking):
+          labels[document] = 1
+
+    # if(initial == 280):
+    #     print "Len of displayed: ", len(displayed_ideal_ranking)
+    #     print "Attack: ", labels
+
+    ndcg = get_ndcg_with_labels(model_ranking, labels, max_len, initial, impression)
+
+    # if impression == 100 and initial%10 == 0:
+    #     print "Model ranking: ", r
+    #     print "Ideal_ranking/attacker: ", ideal_ranking
+    #     print "lables: ", labels
+    #     print "NDCG: ", ndcg
+    #     print "------------------------------------------------"
+    
+    return ndcg
 
 
 def evaluate_ranking(ranking, labels, idcg, max_len):

@@ -45,6 +45,66 @@ class ClickModel(object):
     else:
         return np.zeros(ranking.shape, dtype=bool) + clicks
 
+  def generate_mal_clicks(self, train_ranking, ranking_labels, attacker_scores, attacker_ranking, impressions):
+    '''
+    Generates malicious clicks for a given ranking and relevance labels.
+    ranking: np array of indices which correspond with all_labels
+    all_labels: np array of integers
+    '''
+
+    # max_score = max(attacker_scores)
+    # clicks = (attacker_scores == max_score)
+
+    # median_score = statistics.median(attacker_scores)
+    # clicks = (attacker_scores >= median_score)
+
+    # clicks = list(np.squeeze(clicks))
+
+    clicks = []
+
+    # Only One ------------------------------
+    # count = 0
+
+    # for i in train_ranking:
+    #     if (i in attacker_ranking[:10]):
+    #         clicks.append(True)
+    #         count += 1
+    #         break;
+    #     else:
+    #         clicks.append(False)
+    #     count += 1
+
+    # while count<train_ranking.shape[0]:
+    #     clicks.append(False)
+    #     count += 1
+    # ----------------------------------------
+
+    for i in train_ranking:
+      # if (i in attacker_ranking[0:5] and impressions % 2 == 0):
+      #   clicks.append(True)
+      if (i in attacker_ranking[5:10]):
+        clicks.append(True)
+      else:
+        clicks.append(False)
+
+    return np.zeros(train_ranking.shape, dtype=bool) + clicks
+
+  def generate_new_mal_clicks(self, train_ranking, attacker_ranking, should_click):
+    '''
+    Generates malicious clicks for a given ranking and documents to click.
+    ranking: np array of indices which correspond with all_labels
+    should_click: list of docs to click
+    '''
+
+    clicks = []
+    for i in train_ranking:
+      if (i in attacker_ranking and i in should_click): 
+        clicks.append(True)
+      else:
+        clicks.append(False)
+    
+    return np.zeros(train_ranking.shape, dtype=bool) + clicks
+
 class ExamineClickModel(object):
 
   '''

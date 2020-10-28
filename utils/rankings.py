@@ -33,13 +33,13 @@ def _tiebreak_sort(unranked, n_results):
   Sorts rows of a matrix using tiebreakers, along the last axis.
   """
 
-  n_axis = len(unranked.shape) 
+  n_axis = len(unranked.shape)
   assert (n_axis == 1 or n_axis == 2)
 
   tiebreakers = np.random.random(unranked.shape)
   complex_predictions = np.empty(unranked.shape, dtype=np.complex)
-  complex_predictions.real = unranked
-  complex_predictions.imag = tiebreakers
+  complex_predictions.real = unranked #score
+  complex_predictions.imag = tiebreakers #random numbers to break ties
 
   max_n_docs = unranked.shape[-1]
   max_part = np.minimum(n_results, max_n_docs)
@@ -60,7 +60,7 @@ def _tiebreak_sort(unranked, n_results):
     extra_ind = np.empty(part_sliced.shape, dtype=np.int32)
     extra_ind[:,:] = np.arange(unranked.shape[0])[:,None]
     part_pred = complex_predictions[extra_ind, part[slice_ind]]
-    front_sort = np.argsort(part_pred, axis=-1)
+    front_sort = np.argsort(part_pred, axis=-1) #index array from lowest prediction score to highest
     part_sliced[:, :] = part_sliced[extra_ind, front_sort]
 
   return part
@@ -193,7 +193,7 @@ def rank_multiple_queries(predictions, qptr, max_documents=None,
   # this is faster than ranking them by seperate calls
   rankings = tiebreak_sort(warped, n_results=n_results)
   if inverted:
-    inverted = invert_rankings(rankings, dtype=np.int32)
+    inverted = invert_rankings(rankings, dtype=np.int32) #index is document id and content is the ranking: inverted[10]=0 means document 10 has highest score
     return inverted[np.arange(max_documents)[None,:] < n[:,None]]
   else:
     return rankings[np.arange(max_documents)[None,:] < n[:,None]]

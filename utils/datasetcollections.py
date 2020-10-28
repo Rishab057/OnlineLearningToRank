@@ -261,10 +261,8 @@ DATASET_COLLECTION['local_TD2003'] = DataSet('TD2003', '../datasets/TD2003/Fold*
                                                [41,42],      #SiteMap
                                                [49,50]       #HITS
                                              ])
-DATASET_COLLECTION['local_MQ2007_F1'] = DataSet('MQ2007',
-                                '../datasets/MQ2007_F1/Fold*/',
-                                'short',
-                                       True, 46,
+DATASET_COLLECTION['local_MQ2007_F1'] = DataSet('MQ2007', '/home/rishab/Documents/OnlineLearningToRank/datasets/MQ2007/Fold1/', 'short',
+                                       True, 41,
                                        multileave_feat=[
                                                range(11,16), #TF-IDF
                                                range(21,26), #BM25
