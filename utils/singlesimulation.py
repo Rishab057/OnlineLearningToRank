@@ -3,12 +3,13 @@
 import time
 import numpy as np
 from evaluate import *
-# from evaluate import get_idcg_list, evaluate, evaluate_ranking, get_ndcg_with_ranking
 from clicks import *
 import scipy.stats as stats # For kendall tau
 import matplotlib.pyplot as plt
 import math
-import utils.rankings as rnk
+import json # FOr reading queue.txt
+import time
+import random
 
 
 class SingleSimulation(object):
@@ -16,10 +17,18 @@ class SingleSimulation(object):
   def __init__(self, sim_args, output_queue, click_model, datafold):
     self.train_only = sim_args.train_only
     self.n_impressions = sim_args.n_impressions
-
     self.n_results = sim_args.n_results
     self.click_model = click_model
     self.datafold = datafold
+
+    #  Extra functionalities added by Rishab
+    self.mf = sim_args.mf
+    self.sd_const = sim_args.sd_const
+    self.which = sim_args.which
+    self.start = sim_args.start
+    self.end = sim_args.end
+    self.user_click_model = sim_args.user_click_model
+
     if not self.train_only:
       self.test_idcg_vector = get_idcg_list(self.datafold.test_label_vector,
                                             self.datafold.test_doclist_ranges,
@@ -141,6 +150,7 @@ class SingleSimulation(object):
     return results
 
   def sample_and_rank(self, ranker):
+    
     ranking_i = np.random.choice(self.datafold.n_train_queries())
     train_ranking = ranker.get_train_query_ranking(ranking_i)
 
@@ -150,200 +160,147 @@ class SingleSimulation(object):
     return ranking_i, train_ranking
 
 
-  def run(self, ranker, output_key):
+  def run(self, ranker, output_key, attacker_output_key):
     starttime = time.time()
+
+    if "frequency" in self.click_model.name:
+      print "Name: ", self.click_model.name, " n_res:", self.n_results, " start:", self.start, " end:", self.end, " mf:", self.mf, " sd:", self.sd_const
+
+    else:
+      print "Name: ", self.click_model.name, " n_res:", self.n_results, " start:", self.start, " end:", self.end
 
     ranker.setup(train_features = self.datafold.train_feature_matrix,
                  train_query_ranges = self.datafold.train_doclist_ranges)
 
+
+    #Get the normal user click model, and the attacker weights
+    normal_click_model = get_click_models([self.user_click_model] + [self.datafold.click_model_type])[0]
+    attacker_weights = get_attacker_weights(self.datafold.name)
+
     run_results = []
-    impressions = 0
+    attacker_results = []
+    iteration = 0
+    noc = 0
+    noac = []
+    queries_attacked = 0
+    queries_attacked_per_1000 = 0
+    noexpl_total = 0
 
-    text = open("Weights.txt","r")
-    lines = text.read().split(',')
-    lines = [float(i) for i in lines]
-    attacker_weights = np.expand_dims(np.asarray(lines), axis=1)
+    repeat = 0
+    winners = 0
+    repeta = []
+    cosine_sim = []
+    cosine_sim_curr = []
+    cosine_sim_neg = []
+    cosine_sim_curr_neg = []
 
-    vector_norms = np.sum(attacker_weights ** 2, axis=0) ** (1. / 2)
-    attacker_weights /= vector_norms[None, :]
-    ndcgs = []
-    ndcgs_attacker = []
-    taus = []
-    ndcg = 0
-    ndcg_attacker = 0
 
     for impressions in range(self.n_impressions):
-      # ranking_i, train_ranking = self.sample_and_rank(ranker)
-      ranking_i = np.random.choice(self.datafold.n_train_queries())
-      query_feat = ranker.get_query_features(ranking_i,
-                                     ranker._train_features,
-                                     ranker._train_query_ranges)
 
-      doc_scores = ranker.model.score(query_feat)
-      system_ranking = rnk.rank_query(doc_scores)
-      freq = {}
-      attacker_wait = 10
+      #Get the train ranking 
+      ranking_i, train_ranking = self.sample_and_rank(ranker)
 
-      while attacker_wait:
 
-        train_ranking = ranker.get_train_query_ranking(ranking_i)
-        for r in train_ranking:
-          freq[r] = freq.get(r, 0) + 1
+      #Get the training features  
+      train_feat = ranker.get_query_features(ranking_i,
+                                       self.datafold.train_feature_matrix,
+                                       self.datafold.train_doclist_ranges)
 
-        attacker_wait -= 1
-
+      #Get the associated ground-truth labels
       ranking_labels = self.datafold.train_query_labels(ranking_i)
 
-      # print train_ranking
-      # print "============"
-      should_click = []
+      #Find the attacker ranking
+      attacker_ranking = get_attacker_ranking(train_feat, attacker_weights)
 
-      #Not required but kept for checking
-      import operator
-      sorted_freqs = sorted(freq.items(), key=operator.itemgetter(1), reverse=True)
-      # print " Sorted version: "
-      # print sorted_freqs
-
-      for key in freq:
-        if freq[key] >= 9:
-          should_click.append(key)
-
-
-      X = []
-      start_doc = self.datafold.train_doclist_ranges[ranking_i]
-      end_doc = self.datafold.train_doclist_ranges[ranking_i+1]
-      train_docs = [id for id in range(start_doc, end_doc)]
-
-      for id in train_docs:
-        X.append([self.datafold.train_feature_matrix[id, :]])
-   
-
-      X = np.array(X)     # (10x1x41)
-      attacker_scores = np.dot(X,attacker_weights)
-      attacker_scores = attacker_scores/np.linalg.norm(attacker_scores)
-  
-      temp = [(attacker_scores[i-start_doc], i-start_doc)  for i in range(start_doc, end_doc)]
-      temp = sorted(temp, key = lambda x: (-1*x[0]))
-      attacker_ranking = list(map(lambda x: x[1], temp))
-
-
-      # clicks = self.click_model.generate_clicks(train_ranking, ranking_labels)
-      clicks = self.click_model.generate_mal_clicks(train_ranking, ranking_labels, attacker_scores, attacker_ranking, impressions)
-      # clicks = self.click_model.generate_new_mal_clicks(train_ranking, attacker_ranking, should_click)
-
-      test_r = ranker.get_test_rankings(self.datafold.test_feature_matrix, self.datafold.test_doclist_ranges, inverted=True)
-      # test_ndcg = evaluate(
-      #               test_r,
-      #               self.datafold.test_label_vector,
-      #               self.test_idcg_vector,
-      #               self.datafold.test_doclist_ranges.shape[0] - 1,
-      #               self.n_results)
       
-      # print "Test : "
-      # print self.datafold.test_feature_matrix.shape
-      # print test_r.shape   =>   11742
+      clicks = np.zeros(train_ranking.shape, dtype=bool)
 
-      X = []
-      for id in range(len(test_r)):
-      	X.append([self.datafold.test_feature_matrix[id, :]])
-      X = np.array(X)
+      # Find whether attack needs to be done in this iteration or not
+      attack = False
+      if(self.which == 0):
+        attack = True
+      elif(self.which == 1):
+        attack = (iteration <= 2000) 
+      elif(self.which == 2):
+        attack = (iteration > 2000 and iteration <= 4000)
+      elif(self.which == 3):
+        attack = (iteration > 4000 and iteration <= 6000)
+      elif(self.which == 4):
+        attack = (iteration > 6000 and iteration <= 8000)
+      elif(self.which == 5):
+        attack = (iteration > 8000 and iteration <= 10000)
+      else:
+        attack = False
 
-      attacker_scores = np.dot(X,attacker_weights)
-      attacker_scores = attacker_scores/np.linalg.norm(attacker_scores)
+      if attack:
+        # If attack needs to be done, find which attack
 
-      initial = 0
-      comb_tau = 0
-      na = 0
-      r = 0
-      # attacker_list = []
-    
-      while(initial < self.datafold.test_doclist_ranges.shape[0]-1):
-        start_doc = self.datafold.test_doclist_ranges[initial]
-        end_doc = self.datafold.test_doclist_ranges[initial+1]
-        test_labels = self.datafold.test_query_labels(initial)
+        freq = {}
+        if self.click_model.name == "frequency_attack":
+          # If it is frequency attack then repeat the same query 9 times
+          for i in range(0, 9):
+            if iteration > self.n_impressions:
+              break;
+            if i > 0:
+              train_ranking = ranker.get_train_query_ranking(ranking_i)
 
-        temp = [(attacker_scores[i], i-start_doc)  for i in range(start_doc, end_doc)]
-        temp = sorted(temp, key = lambda x: (-1*x[0]))
-        attacker_ranking = list(map(lambda x: x[1], temp))
+            # Create/Update the frequency table (freq)
+            for r in train_ranking:
+              freq[r] = freq.get(r, 0) + 1
+            
+            # Sort the frequency in decreasing order of frequency
+            sorted_freqs = sorted(freq.items(), key=operator.itemgetter(1), reverse=True)
 
-        assert len(attacker_ranking) == test_r[start_doc:end_doc].shape[0]
+            # Create a top-10 frequent list
+            temp = 10
+            ik = 0
+            top_k = []
 
-        r = [0 for i in range(len(attacker_ranking))]
-        for i in range(len(attacker_ranking)):
-	    	if test_r[start_doc+i] < len(r):
-	       		r[test_r[start_doc+i]] = i
+            while (ik < len(sorted_freqs) and ik<temp):
+                  top_k.append(sorted_freqs[ik][1])
+                  ik += 1
 
-        # tau, _ = stats.kendalltau(r, test_r[start_doc:end_doc])
-        tau, _ = stats.kendalltau(r, attacker_ranking)
-        comb_tau += tau
+            # Find standard deviation of the top-10 frequent list
+            sd = np.std(top_k)
 
-        # attacker_list.extend(attacker_ranking)
-        # ndcg += compute_ndcg(attacker_ranking, test_r[start_doc:end_doc], 10)
-        ndcg += get_ndcg_with_labels(test_r[start_doc:end_doc], test_labels, 10, initial, is_test = True)
-        initial += 1
-        na = get_ndcg_with_ranking2(test_r[start_doc:end_doc], attacker_ranking, 10, initial, impressions)
-        ndcg_attacker += na
+            if(i < 8):
+              # Doing evaluation in every iteration even when no clicks are happening
 
-        # print " query: ", initial
-        # print attacker_ranking
-        # print r
-        # print na
-        # print "----------------------"
+              self.test_evaluation(attacker_results, iteration, ranker, clicks, self.n_results, ranker.model.learning_rate, attacker_weights)
+              self.timestep_evaluate(run_results, iteration, ranker, ranking_i, train_ranking, ranking_labels)
+              ranker.process_clicks(clicks)
+              iteration += 1
 
-      # if impressions % 100 == 0:
-	     #  # print "----------------------"
-	     #  print 'Impression: ', impressions
-	     #  print attacker_ranking
-	     #  print r
-	     #  print na
-	     #  print "----------------------"
+            # If the sd > 1, then find the position which is atleast sd_cont standard positions away from the next position. If found break the loop.
+            if sd > 1:
+              found = False 
+              for index in range(0, len(top_k)-1):
+                if self.sd_const*sd <= top_k[index] - top_k[index+1]:
+                  found = True
+                  break;
+              if found:
+                break;
+      
+        teams = ranker.multileaving.teams
+        # Generating malicious clicks
+        clicks, noexpl = self.click_model.generate_clicks(train_ranking, attacker_ranking, teams, self.start, self.end, freq, self.mf, self.sd_const)
+        noexpl_total += noexpl
 
-      if impressions % 10 == 0:
-          ndcgs.append((ndcg/10.0)/initial)
-          ndcgs_attacker.append((ndcg_attacker/10.0)/initial)
-          ndcg = 0
-          ndcg_attacker = 0
+      else:
+        clicks = normal_click_model.generate_clicks(train_ranking, ranking_labels)
 
-      taus.append(comb_tau/initial)
-      # ndcgs.append(ndcg/initial)
+      if iteration <= self.n_impressions:
+        self.test_evaluation(attacker_results, iteration, ranker, clicks, self.n_results, ranker.model.learning_rate, attacker_weights)       
+        self.timestep_evaluate(run_results, iteration, ranker,
+                               ranking_i, train_ranking, ranking_labels)
 
-      # print("my vs. ori", ndcg/initial, test_ndcg)
-      # assert ndcg/initial == test_ndcg
-
-
-      self.timestep_evaluate(run_results, impressions, ranker,
-                             ranking_i, train_ranking, ranking_labels)
-
-      ranker.process_clicks(clicks)
-
-    # print ranker.model.weights
-    # evaluate after final iteration
-    x2 = [i for i in range(self.n_impressions-1)] 
-    x = [i for i in range(self.n_impressions/10-1)]
-    # plt.plot(x, taus)
-    ndcgs = ndcgs[1:]
-    fig_ndcg, ax_ndcg = plt.subplots()
-    ax_ndcg.plot(x, ndcgs)
-    ax_ndcg.set_xlabel("Impressions")
-    ax_ndcg.set_ylabel(self.datafold.name + ": Fold " + str(self.datafold.fold_num+1) + " NDCGs")
-
-    ndcgs_attacker = ndcgs_attacker[1:]
-    fig_ndcg_attacker, ax_ndcg_attacker = plt.subplots()
-    ax_ndcg_attacker.plot(x, ndcgs_attacker)
-    ax_ndcg_attacker.set_xlabel("Impressions")
-    ax_ndcg_attacker.set_ylabel(self.datafold.name + ": Fold " + str(self.datafold.fold_num+1) + " NDCGs attacker")
-
-    taus = taus[1:]
-    fig_ndcg, ax_ndcg = plt.subplots()
-    ax_ndcg.plot(x2, taus)
-    ax_ndcg.set_xlabel("Impressions")
-    ax_ndcg.set_ylabel(self.datafold.name + ": Fold " + str(self.datafold.fold_num+1) + " Tau")
-    plt.show()
+        ranker.process_clicks(clicks)
+        noc += np.count_nonzero(clicks)
+        iteration += 1
 
     ranking_i, train_ranking = self.sample_and_rank(ranker)
     ranking_labels =  self.datafold.train_query_labels(ranking_i)
-    impressions += 1
-    self.timestep_evaluate(run_results, impressions, ranker,
+    self.timestep_evaluate(run_results, iteration, ranker,
                            ranking_i, train_ranking, ranking_labels)
 
     ranker.clean()
@@ -353,25 +310,93 @@ class SingleSimulation(object):
     output = {'run_details': self.run_details,
               'run_results': run_results}
 
+    attacker_output = {'run_details': self.run_details,
+                       'run_results': attacker_results}
+
+
+    self.output_queue.put((attacker_output_key, attacker_output))
     self.output_queue.put((output_key, output))
 
 
-# Custom NDCG function written by Rishab (Considering binary relevance only)
-def compute_ndcg(attacker_ranking, model_ranking, k):
 
-    num = 0
-    denom = 0
-    i = 1
-    for r in model_ranking:
-      if i > k:
-          break
-      if r in attacker_ranking[0:k]:
-          num += 1/(math.log(1+i, 2))
-      i += 1
+  def test_evaluation(self, attacker_results, iteration, ranker, clicks, n_results, lr, attacker_weights):
 
-    for j in range(1,k+1):
-      if j > len(attacker_ranking):
-        break
-      denom += 1/(math.log(1+j, 2))
+      # Getting the test_ranking in inverted format.
+      test_r = ranker.get_test_rankings(self.datafold.test_feature_matrix, self.datafold.test_doclist_ranges, inverted=True)
 
-    return num/denom
+      ndcg_attack, ndcg_label, tau, tau_sum = 0, 0, 0, 0
+      for test_query in range(self.datafold.test_doclist_ranges.shape[0]-1):
+        # Find the start doc and end doc from the ranges
+        start_doc = self.datafold.test_doclist_ranges[test_query]
+        end_doc = self.datafold.test_doclist_ranges[test_query+1]
+
+        # Find the ground truth test labels
+        test_labels = self.datafold.test_query_labels(test_query)
+
+        # Get the test features and create the attacker ranking
+        test_features = self.datafold.test_feature_matrix[start_doc:end_doc, :]
+        attacker_ranking = get_attacker_ranking(test_features, attacker_weights)
+
+        assert len(attacker_ranking) == test_r[start_doc:end_doc].shape[0]
+
+        # Find the NDCG performance wrt. Attacker and wrt. Gound Truth 
+        ndcg_attack += get_ndcg_with_ranking(test_r[start_doc:end_doc], attacker_ranking, n_results)
+        ndcg_label += get_ndcg_with_labels(test_r[start_doc:end_doc], test_labels, n_results)
+        tau, _ = stats.kendalltau(attacker_ranking, test_r[start_doc:end_doc])
+        tau_sum += tau
+
+      num_clicks = np.count_nonzero(clicks)
+
+      cur_results = {
+        'iteration': iteration,
+        'NDCG_attack': ndcg_attack/test_query,
+        'NDCG_label': ndcg_label/test_query,
+        'Kendall\'s Tau': tau_sum/test_query,
+        'Click Number': num_clicks,
+        'LR': lr,
+      }
+
+      for name, value in ranker.get_messages().items():
+        cur_results[name] = value
+      attacker_results.append(cur_results)
+
+
+def get_attacker_ranking(features, attacker_weights):
+    '''
+    Given features and weights get the attacker ranking. 
+    '''
+
+    # Finding scores by doing dot product
+    attacker_scores = np.dot(features, attacker_weights)
+
+    # Normalizing the scores
+    norm_value = np.linalg.norm(attacker_scores)
+    if norm_value > 0:
+      attacker_scores = attacker_scores/norm_value
+
+    # Finding the ranking by first creating the (score, doc) pair and then sorting by score in decreasing order
+    attacker_score_document_pair = [(attacker_scores[i], i) for i in range(len(attacker_scores))]
+    attacker_score_document_pair = sorted(attacker_score_document_pair, key = lambda x: (-1*x[0], x[1]))
+    attacker_ranking = list(map(lambda x: x[1], attacker_score_document_pair))
+    return attacker_ranking
+
+def get_attacker_weights(name):
+    '''
+    Get the attacker weights from the given dataset name.
+    '''
+    if "MSLR" in name:
+      attacker_weights_file = open("Weights_web10k.txt","r")
+    elif "MQ2007" in name:
+      attacker_weights_file = open("Weights_mq2007.txt","r")
+    elif "Webscope" in name:
+      attacker_weights_file = open("Weights_yahoo.txt","r")
+    elif "2003" in name:
+      attacker_weights_file = open("Weights_td2003.txt","r")
+    else:
+      print("Weight file not specified")
+
+    attacker_weights_lines = attacker_weights_file.read().split(',')
+    attacker_weights_lines = [float(i) for i in attacker_weights_lines]
+    attacker_weights = np.expand_dims(np.asarray(attacker_weights_lines), axis=1)
+
+    return attacker_weights

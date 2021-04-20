@@ -13,7 +13,9 @@ from Queue import Empty
 from utils.clicks import get_click_models
 from utils.datasetcollections import get_datasets
 from utils.simulationoutput import SimulationOutput, get_simulation_report
+from utils.attackeroutput import AttackerOutput
 from utils.averageoutput import OutputAverager
+from utils.attackeraverager import AttackerAverager
 
 
 class DataSimulation(object):
@@ -35,9 +37,11 @@ class DataSimulation(object):
     self.max_folds = 999
 
     self.output_averager = OutputAverager(simulation_arguments)
+    self.attacker_averager = AttackerAverager(simulation_arguments)
     self.report_output = get_simulation_report(simulation_arguments)
     sys.stdout = self.report_output
     sys.stderr = self.report_output
+    
 
   def run(self, ranker_tuples):
     starttime = time.time()
@@ -74,6 +78,8 @@ class DataSimulation(object):
         (str(datetime.timedelta(seconds=seconds_past)),
          seconds_past))
 
+    for output in self.run_outputs.values():
+      print 'OP: ', output, ' -> ', output.finished()
     assert all(output.finished() for output in self.run_outputs.values()), \
         'Program exiting but not all outputs were finished.'
 
@@ -100,18 +106,24 @@ class DataSimulation(object):
       r_args = r_class.default_parameters()
       r_args.update(r_new_args)
       output_key = run_name, datafold.name
+      attacker_output_key = run_name, datafold.name, "attacker"
       if not output_key in self.run_outputs:
         self.run_outputs[output_key] = SimulationOutput(
                 self.sim_args, run_name, datafold,
                 len(self.click_models[datafold.click_model_type]), r_args,
                 self.output_averager)
+      if not attacker_output_key in self.run_outputs:
+        self.run_outputs[attacker_output_key] = AttackerOutput(
+                self.sim_args, run_name, datafold,
+                len(self.click_models[datafold.click_model_type]), r_args,
+                self.attacker_averager)
       for c_m in self.click_models[datafold.click_model_type]:
         sim = SingleSimulation(self.sim_args, self.output_queue, c_m, datafold)
         ranker_setup = r_class, r_args
         r_args['n_results'] = self.sim_args.n_results
         r_args['n_features'] = datafold.num_features
         for i in xrange(datafold.num_runs_per_fold):
-          new_proc = Process(target=self.start_run, args=(sim, output_key, ranker_setup,
+          new_proc = Process(target=self.start_run, args=(sim, output_key, attacker_output_key, ranker_setup,
                              self.run_index))
           self.processes.append((new_proc, datafold))
           print 'Launch %d: %s %d with click model %s on fold %d from dataset %s.' % (
@@ -126,7 +138,7 @@ class DataSimulation(object):
           self.report_output.flush()
           yield new_proc
 
-  def start_run(self, simulation, output_key, ranker_setup, seed=0):
+  def start_run(self, simulation, output_key, attacker_output_key, ranker_setup, seed=0):
     """
     Performs a single run.
     Random functions get different seeds for each process.
@@ -135,7 +147,8 @@ class DataSimulation(object):
     np.random.seed(int(time.time() + seed * 100 + seed))
     rankerclass, ranker_args = ranker_setup
     ranker = rankerclass(**ranker_args)
-    simulation.run(ranker, output_key=output_key)
+    # print("ranker class: ", rankerclass.learning_rate)
+    simulation.run(ranker, output_key=output_key, attacker_output_key=attacker_output_key)
 
   def update_active(self):
     """
@@ -169,7 +182,7 @@ class DataSimulation(object):
     # print 'Folds %d max folds %d active %d' % (self.folds_in_mem, self.max_folds, self.active)
     return self.active
 
-  def wait_for_output(self, timeout=30):  # 0):
+  def wait_for_output(self, timeout=50):  # 0):
     """
     Prints output for all finished threads
     """
@@ -188,4 +201,4 @@ class DataSimulation(object):
     self.update_active()
 
   def _expecting_output(self):
-    return self._outputs_found < self._launched
+    return self._outputs_found < 2*self._launched

@@ -6,6 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from models.linearmodel import LinearModel
 from algorithms.DBGD.tddbgd import TD_DBGD
 
+
 # Dueling Bandit Gradient Descent
 class TD_MGD(TD_DBGD):
 
@@ -13,7 +14,8 @@ class TD_MGD(TD_DBGD):
     super(TD_MGD, self).__init__(*args, **kargs)
     self.model = LinearModel(n_features = self.n_features,
                              learning_rate = self.learning_rate,
-                             n_candidates = n_candidates)
+                             n_candidates = n_candidates,
+                             learning_rate_decay = self.model.learning_rate_decay)
 
   @staticmethod
   def default_parameters():

@@ -33,15 +33,23 @@ class SimulationArgumentParser(argparse.ArgumentParser):
 
     self._sim_add_argument('--output_folder', dest='output_folder', type=str, required=False,
                       help='Path to folders where outputs should be stored, if not given output will be printed.'
-                      , default='/zfs/ilps-plex1/slurm/datastore/hooster2/new-output/fullruns/')
+                      , default='./output')
 
     self._sim_add_argument('--log_folder', dest='log_folder', type=str, required=False,
                       help='Path to folders where run log and errors will be stored.',
-                      default='/zfs/ilps-plex1/slurm/datastore/hooster2/logs/')
+                      default='./log/')
 
     self._sim_add_argument('--average_folder', dest='average_folder', type=str, required=False,
                       help='Path to folders where averaged output of runs will be stored.',
-                      default='//zfs/ilps-plex1/slurm/datastore/hooster2/new-output/averaged/')
+                      default='./average')
+
+    self._sim_add_argument('--attacker_average_folder', dest='attacker_average_folder', type=str, required=False,
+                      help='Path to folders where averaged output of runs will be stored.',
+                      default='./attackeraverage')
+
+    self._sim_add_argument('--attacker_folder', dest='attacker_folder', type=str, required=False,
+                      help='Path to folders where attacker output of runs will be stored.',
+                      default='./attackeroutput')
 
     self._sim_add_argument('--small_dataset', dest='small_dataset', action='store_false',
                       help='Set true if dataset is small and memory is never a concern.')
@@ -84,6 +92,27 @@ class SimulationArgumentParser(argparse.ArgumentParser):
 
     self._sim_add_argument('--nonrel_test', dest='purge_test_set', action='store_false',
                       help='Include non-relevant queries in evaluation on test-set.')
+
+    # Additional arguments added by Rishab 
+    self._sim_add_argument('--mf', dest='mf', default=5, type=int,
+                      help='Number of most frequent documents to look.')
+
+    self._sim_add_argument('--sd_const', dest='sd_const', default=2.0, type=float,
+                      help='How many standard deviations away to look.')
+
+    self._sim_add_argument('--start', dest='start', default=0, type=int,
+                      help='Which documents to intersect (start)')
+
+    self._sim_add_argument('--end', dest='end', default=5, type=int,
+                      help='Which documents to intersect (end)')
+
+    self._sim_add_argument('--which', dest='which', default=1, type=int,
+                      help='Which half of the portion to attack. (First 2000, Second 2000 etc.)')
+
+    self._sim_add_argument('--user_click_model', dest='user_click_model', default='exper1', type=str,
+                      help='Name of normal user click model')
+
+
 
     self._arguments_initialized = False
 

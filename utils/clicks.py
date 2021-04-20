@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
+import operator
+import random
 
 
 class ClickModel(object):
@@ -45,65 +45,6 @@ class ClickModel(object):
     else:
         return np.zeros(ranking.shape, dtype=bool) + clicks
 
-  def generate_mal_clicks(self, train_ranking, ranking_labels, attacker_scores, attacker_ranking, impressions):
-    '''
-    Generates malicious clicks for a given ranking and relevance labels.
-    ranking: np array of indices which correspond with all_labels
-    all_labels: np array of integers
-    '''
-
-    # max_score = max(attacker_scores)
-    # clicks = (attacker_scores == max_score)
-
-    # median_score = statistics.median(attacker_scores)
-    # clicks = (attacker_scores >= median_score)
-
-    # clicks = list(np.squeeze(clicks))
-
-    clicks = []
-
-    # Only One ------------------------------
-    # count = 0
-
-    # for i in train_ranking:
-    #     if (i in attacker_ranking[:10]):
-    #         clicks.append(True)
-    #         count += 1
-    #         break;
-    #     else:
-    #         clicks.append(False)
-    #     count += 1
-
-    # while count<train_ranking.shape[0]:
-    #     clicks.append(False)
-    #     count += 1
-    # ----------------------------------------
-
-    for i in train_ranking:
-      # if (i in attacker_ranking[0:5] and impressions % 2 == 0):
-      #   clicks.append(True)
-      if (i in attacker_ranking[5:10]):
-        clicks.append(True)
-      else:
-        clicks.append(False)
-
-    return np.zeros(train_ranking.shape, dtype=bool) + clicks
-
-  def generate_new_mal_clicks(self, train_ranking, attacker_ranking, should_click):
-    '''
-    Generates malicious clicks for a given ranking and documents to click.
-    ranking: np array of indices which correspond with all_labels
-    should_click: list of docs to click
-    '''
-
-    clicks = []
-    for i in train_ranking:
-      if (i in attacker_ranking and i in should_click): 
-        clicks.append(True)
-      else:
-        clicks.append(False)
-    
-    return np.zeros(train_ranking.shape, dtype=bool) + clicks
 
 class ExamineClickModel(object):
 
@@ -154,6 +95,100 @@ class ExamineClickModel(object):
     else:
         return np.zeros(ranking.shape, dtype=bool) + clicks
 
+class MaliciousClickModel(object):
+
+  '''
+  Class for cascading click-models used to simulate malicious clicks.
+  '''
+
+  def __init__(self, name, data_type):
+    '''
+    Name is used for logging and identifying the attack type.
+    '''
+    self.name = name
+    self.type = data_type
+
+  def get_name(self):
+    '''
+    Name that can be used for logging.
+    '''
+    return self.name + '_' + self.type
+
+  def generate_clicks(self, train_ranking, attacker_ranking, teams, start, end, freq, mf, sd_const):
+      
+      if self.name == "naive_intersection_attack":
+        return self.naive_intersection_attack(train_ranking, teams, attacker_ranking, start, end)
+      elif self.name == "frequency_attack":
+        return self.frequency_attack(train_ranking, teams, attacker_ranking, freq, mf, start, end, sd_const)
+      else:
+        print("Attack name is incorrect. Only 'naive_intersection_attack' and 'frequency_attack' are supported!!\n")
+
+
+  def naive_intersection_attack(self, train_ranking, teams, attacker_ranking, start, end):
+    '''
+    Generates malicious clicks based on the intersection of train_ranking and attacker_ranking.
+    Intersection is guided by start and end hyper-parameters.
+    '''
+    clicks = []
+    num_exploratory_clicks = 0
+
+    for i in range(0, len(train_ranking)):
+
+      if (len(attacker_ranking) >= end and train_ranking[i] in attacker_ranking[start:end]):
+        if teams[i] == 1:
+            num_exploratory_clicks += 1
+        clicks.append(True)
+      else:
+        clicks.append(False)
+
+    return np.zeros(train_ranking.shape, dtype=bool) + clicks, num_exploratory_clicks
+
+
+  def frequency_attack(self, train_ranking, teams, attacker_ranking, freq, mf, start, end, sd_const):
+    '''
+    Generates malicious clicks based on the intersection of train_ranking and attacker_ranking.
+    Intersection is guided by start and end hyper-parameters.
+    mf controls which documents get clicked in the intersection.
+    mf: Number of most frequent docs that the attacker assumes come from the current ranker.
+    freq: Frequency table containing (doc, freq)
+    '''
+    
+    # Sorting the frequency based on frequency
+    sorted_freqs = sorted(freq.items(), key=operator.itemgetter(1), reverse=True)
+
+    # Breaking the table into doc and frequency. The top_k_docs can be considered as a proxy for current ranker's ranking
+    i = 0
+    top_k_docs = []
+    top_k_freq = []
+    while (i < len(sorted_freqs) and i<mf):
+        top_k_docs.append(sorted_freqs[i][0])
+        top_k_freq.append(sorted_freqs[i][1])
+        i += 1
+
+    clicks = []
+    num_exploratory_clicks = 0
+
+    # Finding the standard deviation of top-k frequency list
+    sd = np.std(top_k_freq)
+
+    # Finding the index of position which is atleast sd_const standard deviations away. If such position is not found then mf will be over-rided otherwise not.
+    ind = len(top_k_freq) 
+    for index in range(0, len(top_k_freq)-1):
+        if sd_const*sd <= top_k_freq[index] - top_k_freq[index+1]:
+            ind = index+1
+            break;
+
+    # Generating the clicks using the intersection and also making sure that the document is not one of the most frequent documents
+    for i in range(0, len(train_ranking)):
+      if train_ranking[i] not in top_k_docs[0:ind] and train_ranking[i] in attacker_ranking[start:end]:
+        if teams[i] == 1:
+            num_exploratory_clicks += 1
+        clicks.append(True)
+      else:
+        clicks.append(False)
+
+    return np.zeros(train_ranking.shape, dtype=bool) + clicks, num_exploratory_clicks
+
 
 # create synonyms for keywords to ease command line use
 syn_tuples = [
@@ -174,6 +209,10 @@ syn_tuples = [
     ('short', []),
     ('long', []),
     ]
+attack_tuples = [
+    ('naive_intersection_attack', []),
+    ('frequency_attack', []),
+]
 synonyms = {}
 for full, abrv_list in syn_tuples:
     assert full not in synonyms or synonyms[full] == full
@@ -181,6 +220,14 @@ for full, abrv_list in syn_tuples:
     for abrv in abrv_list:
         assert abrv not in synonyms or synonyms[abrv] == full
         synonyms[abrv] = full
+
+attack_synonyms = {}
+for full, abrv_list in attack_tuples:
+    assert full not in attack_synonyms or attack_synonyms[full] == full
+    attack_synonyms[full] = full
+    for abrv in abrv_list:
+        assert abrv not in attack_synonyms or attack_synonyms[abrv] == full
+        attack_synonyms[abrv] = full
 
 bin_models = {}
 bin_models['navigational'] = np.array([.05, .95]), np.array([.2, .9])
@@ -215,20 +262,29 @@ def get_click_models(keywords):
   '''
     type_name = None
     type_keyword = None
+    # print("Keywords: ", keywords)
     for keyword in keywords:
-        assert keyword in synonyms
-        if synonyms[keyword] in all_models:
+        assert (keyword in synonyms) or (keyword in attack_synonyms)
+        if keyword in synonyms and synonyms[keyword] in all_models:
             type_name = synonyms[keyword]
             type_keyword = keyword
             break
     assert type_name is not None and type_keyword is not None
 
     models_type = all_models[type_name]
-    full_names = [synonyms[key] for key in keywords if key != type_keyword]
+    full_names = []
+    for key in keywords:
+        if key in synonyms and key != type_keyword:
+            full_names.append(synonyms[key])
+        if key in attack_synonyms:
+            full_names.append(attack_synonyms[key])
 
     click_models = []
+
     for full in full_names:
-        if full == 'ex_per_1':
+        if full in attack_synonyms:
+            c_m = MaliciousClickModel(full, type_name)
+        elif full == 'ex_per_1':
             c_m = ExamineClickModel(full, type_name, *models_type[full])
         else:
             c_m = ClickModel(full, type_name, *models_type[full])

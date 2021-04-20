@@ -10,7 +10,7 @@ def create_folders(filename):
     if not os.path.exists(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
 
-class FileOutput(object):
+class AttackerFileOutput(object):
 
     def __init__(self, output_file_path, output_header=None, close_between_writes=False,
                  also_print=False, write_date=False):
@@ -52,11 +52,6 @@ class FileOutput(object):
 
     def write(self, output, skip_write_date=False):
         assert not self._closed
-        # if isinstance(output, str):
-        #     output = [output]
-        # elif isinstance(output, list):
-        #     output = [line + '\n' for line in output]
-        # assert type(output) is list, 'Expected output to be list, found %s' % type(output)
         self._open_file()
         for line in output:
             if self.write_date and self._new_line and not skip_write_date:
@@ -74,61 +69,24 @@ class FileOutput(object):
             self._original_stdout.write('\n')
 
 
-class PrintOutput(object):
-
-    def __init__(self, output_header=None, write_date=False):
-        self.write_date = write_date
-        if not output_header is None:
-            self.write(output_header)
-
-    def write(self, output):
-        if type(output) is str:
-            output = [output]
-        assert type(output) is list, 'Expected output to be list, found %s' % type(output)
-        for line in output:
-            if self.write_date:
-                line = '%s: %s' % (time.strftime('%c'), line)
-            print line
-
-    def close(self):
-        pass
-
-
-def get_simulation_report(simulation_arguments):
-    file_name = sys.argv[0]
-    if file_name[-3:] == ".py":
-        file_name = file_name[:-3].split("/")[-1]
-    date_str = file_name + "-" + time.strftime('Log-%y-%m-%d-%X')
-
-    if not simulation_arguments.log_folder is None \
-        and os.path.isdir(simulation_arguments.log_folder):
-        output_path = simulation_arguments.log_folder + '/' + date_str.replace(' ', '-') + '.txt'
-        header = ['Starting simulation at %s.' % date_str, 'Log is also stored in output file at %s'
-                   % output_path]
-        return FileOutput(output_path, output_header=header, also_print=True, write_date=True)
-    else:
-        header = ['Starting simulation.',
-                  'WARNING: No log folder found, log is not stored elsewhere.']
-        return PrintOutput(output_header=header, write_date=True)
-
-
-class SimulationOutput(object):
+class AttackerOutput(object):
 
     """
     Class designed to manage the multiprocessing of simulations over multiple datasets.
     """
 
     def __init__(self, simulation_arguments, simulation_name, dataset, num_click_models,
-                 ranker_arguments, output_averager):
+                 ranker_arguments, attacker_averager):
         self._start_time = time.time()
         self.run_index = 0
-        self.output_folder = simulation_arguments.output_folder
+        self.attacker_output_folder = simulation_arguments.attacker_folder
         self.simulation_name = simulation_name
         self.dataset_name = dataset.name
-        self.output_averager = output_averager
+        self.attacker_averager = attacker_averager
         self.print_output = simulation_arguments.print_output
         self._expected_runs = dataset.num_runs_per_fold * dataset.num_folds * num_click_models
         self._closed = False
+
 
         self.additional_file_name = ""
         
@@ -141,9 +99,9 @@ class SimulationOutput(object):
             self.additional_file_name = "_"+simulation_arguments.click_models[0]+"_"+str(simulation_arguments.n_results)+"_res_"+str(simulation_arguments.start)+"_start_"+str(simulation_arguments.end)+"_end_" \
                                         +str(simulation_arguments.which)+"_half_"+str(simulation_arguments.n_impressions)+"_impressions"+str(ranker_arguments['learning_rate_decay'])+"_lrdecay"
 
-        self.output_path = '%s/%s/%s.out' % (self.output_folder, self.dataset_name,
+        self.output_path = '%s/%s/%s.out' % (self.attacker_output_folder, self.dataset_name,
                                              self.simulation_name+self.additional_file_name)
-
+        print "output path: ", self.output_path
         combined_args = {
                 'simulation_arguments': vars(simulation_arguments),
                 'ranker_arguments': ranker_arguments,
@@ -151,10 +109,10 @@ class SimulationOutput(object):
         if self.print_output:
             output_header = json.dumps(combined_args, sort_keys=True,
                                        indent=4, separators=(',', ': '))
-            self.file_output = BufferPrintOutput(output_header=output_header)
+            self.attacker_file_output = AttackerBufferPrintOutput(output_header)
         else:
             output_header = json.dumps(combined_args, separators=(',',':'))
-            self.file_output = FileOutput(self.output_path, output_header=output_header,
+            self.attacker_file_output = AttackerFileOutput(self.output_path, output_header,
                                           close_between_writes=True, also_print=False,
                                           write_date=False)
 
@@ -171,28 +129,22 @@ class SimulationOutput(object):
         if self.print_output:
             # self.file_output.write(json.dumps(run_output, sort_keys=True,
             #                            indent=4, separators=(',', ': ')))
-            self.file_output.pretty_run_write(self.run_index, run_output)
+            self.attacker_file_output.pretty_run_write(self.run_index, run_output)
         else:
-            self.file_output.write('\n%s' % json.dumps(run_output))
-        
+            self.attacker_file_output.write('\n%s' % json.dumps(run_output))
+
         self.run_index += 1
         if self.run_index >= self._expected_runs:
             self.close()
 
     def close(self, output_file=None):
-        # self.file_output.write(['--------END--------'])
-        # total_time = time.time() - self._start_time
-        # seconds = total_time % 60
-        # minutes = total_time / 60 % 60
-        # hours = total_time / 3600
-        # self.file_output.write(['Total time taken %02d:%02d:%02d' % (hours, minutes, seconds)])
-        self.file_output.close()
+        self.attacker_file_output.close()
         self._closed = True
         if not self.print_output:
-            self.output_averager.create_average_file(self)
+            self.attacker_averager.create_average_file(self)
 
 
-class BufferPrintOutput(object):
+class AttackerBufferPrintOutput(object):
 
     def __init__(self, output_header=None):
         self._closed = False

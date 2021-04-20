@@ -4,6 +4,7 @@ from numpy import log2
 from random import sample
 import numpy as np
 import math
+import random
 
 
 def get_dcg(ordered_labels):
@@ -29,12 +30,10 @@ def get_single_dcg_for_rankers(descending_rankings, document_labels, max_len):
                   + 2)[None, :], axis=1)
 
 
-# Calculate NDCG with a single array of descending ranking and the corresponding labels.
-def get_ndcg_with_labels(ranking, labels, max_len, initial, is_test = False, impression = -1):
-
-    # if is_test and initial == 280:
-    #     print labels
-
+def get_ndcg_with_labels(ranking, labels, max_len):
+    '''
+    Calculating the NDCG with a single array of descending ranking and the corresponding labels.
+    '''
     idcg = get_idcg(np.asarray(labels), max_len)
     if idcg==0:
         return 0
@@ -46,59 +45,34 @@ def get_ndcg_with_labels(ranking, labels, max_len, initial, is_test = False, imp
 
     ndcg = 0
     for i in range(len(nominators)):
-        ndcg += (nominators[i] / denominators[i]) / idcg
-
-    if impression % 100 == 0:
-        print ndcg
+        ndcg += nominators[i] / denominators[i] / idcg
     return ndcg
 
-# Calculate NDCG with a single array of descending model_ranking and a descending ideal_ranking.
-# Assume that the first "max_len" documents in ideal_ranking has relevance score 1 and other documents
-# have relevance score 0.
-def get_ndcg_with_ranking(model_ranking, ideal_ranking, max_len, initial):
-    labels = [0 for i in range(len(model_ranking))]
-    displayed_ideal_ranking = ideal_ranking[:max_len]
-    for document in model_ranking:
-      if document in displayed_ideal_ranking and document<len(model_ranking):
-          labels[document] = 1
 
-    return get_ndcg_with_labels(model_ranking, labels, max_len, initial)
+def get_ndcg_with_ranking(model_ranking, ideal_ranking, max_len):
+    '''
+    Given the model ranking and attacker's ranking (ideal ranking), calculate the NDCG performance.
+    This score measures how close the two rankings are.
+    '''
 
-def get_ndcg_with_ranking2(model_ranking, ideal_ranking, max_len, initial, impression):
+    # Re-invert the the model ranking eg., [2,3,4,1,0]  => [5, 4, 0, 1, 3]   (0 is at position 5, 1 is at position 4 ...)
+    # This is required because the ideal ranking is not inverted while the model_ranking is.
 
-    r = [0 for i in range(len(model_ranking))]      #  [2,3,4,1,0]  => [5, 4, 0, 1, 3]
-    # print model_ranking
+    r = [0 for i in range(len(model_ranking))]
+  
     for i in range(len(model_ranking)):
         if model_ranking[i] < len(r):
             r[model_ranking[i]] = i
 
+    # Creating labels for attacker. Top-5 documents in the attacker's ranking (ideal ranking) are relevant (1), others are not (0).
     labels = [0 for i in range(len(model_ranking))]
-    displayed_ideal_ranking = []
-
     displayed_ideal_ranking = ideal_ranking[:5]
-    
-    # if impression%2 == 0:
-    #     displayed_ideal_ranking = ideal_ranking[:5]
-    # else:
-    #     displayed_ideal_ranking = ideal_ranking[:max_len]
 
     for document in r:
       if document in displayed_ideal_ranking and document<len(model_ranking):
           labels[document] = 1
 
-    # if(initial == 280):
-    #     print "Len of displayed: ", len(displayed_ideal_ranking)
-    #     print "Attack: ", labels
-
-    ndcg = get_ndcg_with_labels(model_ranking, labels, max_len, initial, impression)
-
-    # if impression == 100 and initial%10 == 0:
-    #     print "Model ranking: ", r
-    #     print "Ideal_ranking/attacker: ", ideal_ranking
-    #     print "lables: ", labels
-    #     print "NDCG: ", ndcg
-    #     print "------------------------------------------------"
-    
+    ndcg = get_ndcg_with_labels(model_ranking, labels, max_len)
     return ndcg
 
 
@@ -120,7 +94,6 @@ def evaluate(rankings, label_vector, idcg_vector, n_queries, max_len):
 
     idcg_copy = np.copy(idcg_vector)
     idcg_copy[idcg_vector == 0] = 1
-
     return np.sum(nominators / denominators / idcg_copy) / n_queries
 
 

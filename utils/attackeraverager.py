@@ -25,10 +25,10 @@ def create_folders(filename):
   if not os.path.exists(os.path.dirname(filename)):
     os.makedirs(os.path.dirname(filename))
 
-class OutputAverager(object):
+class AttackerAverager(object):
 
   def __init__(self, simulation_arguments):
-    self.average_folder = simulation_arguments.average_folder
+    self.attacker_average_folder = simulation_arguments.attacker_average_folder
     self._average_index = 0
 
   def click_model_name(self, full_name):
@@ -118,7 +118,7 @@ class OutputAverager(object):
         cm_std = np.std(stacked, axis=0)
         cur_results[click_model] = {
             'mean': cm_mean.tolist(),
-            'std': cm_std.tolist(),          
+            'std': cm_std.tolist(),
           }
 
     output = {
@@ -133,8 +133,10 @@ class OutputAverager(object):
     print "opening %s" % sim_output.output_path
     output = self.average_results(sim_output.output_path)
 
-    self.dataset_path = '%s/%s' % (self.average_folder, sim_output.dataset_name)
+    self.dataset_path = '%s/%s' % (self.attacker_average_folder, sim_output.dataset_name)
     self.output_path = '%s/%s.out' % (self.dataset_path, sim_output.simulation_name+sim_output.additional_file_name)
+
+    print "Output path inside averager: ", self.output_path
     create_folders(self.dataset_path)
     create_folders(self.output_path)
     with open(self.output_path, 'w') as w:
@@ -144,7 +146,7 @@ class OutputAverager(object):
 
     self._average_index += 1
 
-class IndependentOutputAverager(OutputAverager):
-  def __init__(self, average_folder):
-    self.average_folder = average_folder
+class IndependentAttackerAverager(AttackerAverager):
+  def __init__(self, attacker_average_folder):
+    self.attacker_average_folder = attacker_average_folder
     self._average_index = 0
