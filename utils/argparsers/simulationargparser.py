@@ -112,6 +112,9 @@ class SimulationArgumentParser(argparse.ArgumentParser):
     self._sim_add_argument('--user_click_model', dest='user_click_model', default='exper1', type=str,
                       help='Name of normal user click model')
 
+    self._sim_add_argument('--num_attacker_relevant', dest='num_attacker_relevant', default=5, type=int,
+                      help='How many documents in attacker ranking are relevant to the attacker')
+
 
 
     self._arguments_initialized = False

@@ -28,6 +28,7 @@ class SingleSimulation(object):
     self.start = sim_args.start
     self.end = sim_args.end
     self.user_click_model = sim_args.user_click_model
+    self.num_attacker_relevant = sim_args.num_attacker_relevant
 
     if not self.train_only:
       self.test_idcg_vector = get_idcg_list(self.datafold.test_label_vector,
@@ -340,7 +341,7 @@ class SingleSimulation(object):
         assert len(attacker_ranking) == test_r[start_doc:end_doc].shape[0]
 
         # Find the NDCG performance wrt. Attacker and wrt. Gound Truth 
-        ndcg_attack += get_ndcg_with_ranking(test_r[start_doc:end_doc], attacker_ranking, n_results)
+        ndcg_attack += get_ndcg_with_ranking(test_r[start_doc:end_doc], attacker_ranking, self.num_attacker_relevant, n_results)
         ndcg_label += get_ndcg_with_labels(test_r[start_doc:end_doc], test_labels, n_results)
         tau, _ = stats.kendalltau(attacker_ranking, test_r[start_doc:end_doc])
         tau_sum += tau

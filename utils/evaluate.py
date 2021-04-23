@@ -49,7 +49,7 @@ def get_ndcg_with_labels(ranking, labels, max_len):
     return ndcg
 
 
-def get_ndcg_with_ranking(model_ranking, ideal_ranking, max_len):
+def get_ndcg_with_ranking(model_ranking, ideal_ranking, num_relevant, max_len):
     '''
     Given the model ranking and attacker's ranking (ideal ranking), calculate the NDCG performance.
     This score measures how close the two rankings are.
@@ -58,18 +58,18 @@ def get_ndcg_with_ranking(model_ranking, ideal_ranking, max_len):
     # Re-invert the the model ranking eg., [2,3,4,1,0]  => [5, 4, 0, 1, 3]   (0 is at position 5, 1 is at position 4 ...)
     # This is required because the ideal ranking is not inverted while the model_ranking is.
 
-    r = [0 for i in range(len(model_ranking))]
+    non_inv_model_ranking = [0 for i in range(len(model_ranking))]
   
     for i in range(len(model_ranking)):
-        if model_ranking[i] < len(r):
-            r[model_ranking[i]] = i
+        if model_ranking[i] < len(non_inv_model_ranking):
+            non_inv_model_ranking[model_ranking[i]] = i
 
-    # Creating labels for attacker. Top-5 documents in the attacker's ranking (ideal ranking) are relevant (1), others are not (0).
+    # Creating labels for attacker. Num_relevant documents in the ideal ranking (attacker's ranking) are relevant (1), others are not (0).
     labels = [0 for i in range(len(model_ranking))]
-    displayed_ideal_ranking = ideal_ranking[:5]
+    relevant_ideal_ranking = ideal_ranking[:num_relevant]
 
-    for document in r:
-      if document in displayed_ideal_ranking and document<len(model_ranking):
+    for document in non_inv_model_ranking:
+      if document in relevant_ideal_ranking and document<len(model_ranking):
           labels[document] = 1
 
     ndcg = get_ndcg_with_labels(model_ranking, labels, max_len)
