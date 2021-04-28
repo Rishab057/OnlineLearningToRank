@@ -106,7 +106,7 @@ class SimulationArgumentParser(argparse.ArgumentParser):
     self._sim_add_argument('--end', dest='end', default=5, type=int,
                       help='Which documents to intersect (end)')
 
-    self._sim_add_argument('--which', dest='which', default=1, type=int,
+    self._sim_add_argument('--which', dest='which', default=-1, type=int,
                       help='Which half of the portion to attack. (First 2000, Second 2000 etc.)')
 
     self._sim_add_argument('--user_click_model', dest='user_click_model', default='exper1', type=str,

@@ -7,7 +7,7 @@ import datetime
 import gc
 import sys
 import numpy as np
-from singlesimulation import SingleSimulation
+from attacksimulation import AttackSimulation
 from multiprocessing import Process, Queue
 from Queue import Empty
 from utils.clicks import get_click_models
@@ -118,7 +118,7 @@ class DataSimulation(object):
                 len(self.click_models[datafold.click_model_type]), r_args,
                 self.attacker_averager)
       for c_m in self.click_models[datafold.click_model_type]:
-        sim = SingleSimulation(self.sim_args, self.output_queue, c_m, datafold)
+        sim = AttackSimulation(self.sim_args, self.output_queue, c_m, datafold)
         ranker_setup = r_class, r_args
         r_args['n_results'] = self.sim_args.n_results
         r_args['n_features'] = datafold.num_features

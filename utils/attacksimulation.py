@@ -12,7 +12,7 @@ import time
 import random
 
 
-class SingleSimulation(object):
+class AttackSimulation(object):
 
   def __init__(self, sim_args, output_queue, click_model, datafold):
     self.train_only = sim_args.train_only
@@ -218,7 +218,9 @@ class SingleSimulation(object):
 
       # Find whether attack needs to be done in this iteration or not
       attack = False
-      if(self.which == 0):
+      if(self.which == -1):
+        attack = False
+      elif(self.which == 0):
         attack = True
       elif(self.which == 1):
         attack = (iteration <= 2000) 
@@ -386,13 +388,13 @@ def get_attacker_weights(name):
     Get the attacker weights from the given dataset name.
     '''
     if "MSLR" in name:
-      attacker_weights_file = open("Weights_web10k.txt","r")
+      attacker_weights_file = open("attacker_weights/Weights_web10k.txt","r")
     elif "MQ2007" in name:
-      attacker_weights_file = open("Weights_mq2007.txt","r")
+      attacker_weights_file = open("attacker_weights/Weights_mq2007.txt","r")
     elif "Webscope" in name:
-      attacker_weights_file = open("Weights_yahoo.txt","r")
+      attacker_weights_file = open("attacker_weights/Weights_yahoo.txt","r")
     elif "2003" in name:
-      attacker_weights_file = open("Weights_td2003.txt","r")
+      attacker_weights_file = open("attacker_weights/Weights_td2003.txt","r")
     else:
       print("Weight file not specified")
 
