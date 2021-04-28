@@ -29,6 +29,10 @@ python scripts/SIGIR2019.py [-h] [--n_runs N_RUNS] [--n_impr N_IMPRESSIONS] [--v
 
 In the command above, parameters within square brackets are optional. In our papers, we used datasets such as MQ2007 and MQ2008 from LETOR 4.0 datasets, the Yahoo! learning to rank challenge dataset, and MSLR-WEB10K dataset. The possible click models are described in our papers: inf = informational, nav = navigational, and per = perfect. 
 
+Poisoning Attacks
+-------
+This repository also contains the code, that we used to show the robustness of DBGD/MGD based algorithms. Further details can be referred here: [link](README_poisoning_attacks.md)
+
 Citation
 --------
 
