@@ -12,13 +12,26 @@ macro = json.loads(DBGD_output_lines[0])
 
 DBGD_output_lines = DBGD_output_lines[0:]
 
-NDCG_attack_MQ2007 = []
-NDCG_label_MQ2007 = []
-LR_MQ2007 = []
+NDCG_attack = []
+NDCG_label = []
+LR = []
 NDCG_label = []	
 iterations = []
 graph_title = ""
 attack_name = ""
+
+label_lr = ""
+
+if "TD2003" in sys.argv[1]:
+	label_lr = "TD2003"
+elif "MQ2007" in sys.argv[1]:
+	label_lr = "MQ2007"
+elif "Yahoo" in sys.argv[1]:
+	label_lr = "Yahoo"
+elif "MSLR" in sys.argv[1]:
+	label_lr = "MSLR"
+else:
+	print("Wrong name of dataset!!!")
 
 file_name = sys.argv[1]
 
@@ -39,8 +52,7 @@ for line in DBGD_output_lines:
 	run_results = json.loads(line)['results']["NDCG_attack"][attack_name]["mean"]
 	it = 0
 	for val in run_results:
-		NDCG_attack_MQ2007.append(val)
-
+		NDCG_attack.append(val)
 
 	run_results = json.loads(line)['results']["NDCG_label"][attack_name]["mean"]
 
@@ -49,23 +61,14 @@ for line in DBGD_output_lines:
 		iterations.append(it)
 		it += 1
 
-	run_results = json.loads(line)['results']["NDCG_label"][attack_name]["mean"]
-
-	for val in run_results:
-		NDCG_label_MQ2007.append(val)
-
 	run_results = json.loads(line)['results']["LR"][attack_name]["mean"]
 
 	for val in run_results:
-		LR_MQ2007.append(float('%.8f'%val))
-
-
-
-
+		LR.append(float('%.8f'%val))
 
 fig_ndcg_attack, ax_ndcg_attack = plt.subplots()
-ax_ndcg_attack.plot(iterations, NDCG_attack_MQ2007, '#FF0000', label="MQ2007 attacker")
-ax_ndcg_attack.plot(iterations, NDCG_label_MQ2007, '#d79232', label="MQ2007 ground truth")
+ax_ndcg_attack.plot(iterations, NDCG_attack, '#FF0000', label="NDCG attacker")
+ax_ndcg_attack.plot(iterations, NDCG_label, '#d79232', label="NDCG ground truth")
   
 
 # ax_ndcg_attack.set_title("")
@@ -76,21 +79,9 @@ plt.legend()
 
 fig_LR, ax_LR = plt.subplots()
 
-ax_LR.plot(iterations, LR_MQ2007, '#FF0000', label="MQ2007")
-# ax_LR.plot(iterations, LR_Yahoo, '#d79232', label="TD2003")
-# ax_LR.plot(iterations, LR_MSLR, '#0000FF', label="MSLR")
-# ax_LR.set_title(graph_title)
+ax_LR.plot(iterations, LR, '#FF0000', label=label_lr)
 ax_LR.set_xlabel("Iteration")
 ax_LR.set_ylabel("Learning Rate")
 plt.legend()
 
 plt.show()
-
-
-# #FF0000  #800000
-#d79232 #FFD700
-#0000FF #00FFFF   
-
-#DAA520
-#636061
-#FF6347
