@@ -2,6 +2,8 @@
 
 This repository contains the code, that we used to show the robustness of DBGD/MGD based algorithms.
 
+**attacker_weights** folder contains the weights file of the attacker for 4 datasets. Additional weight files can be added here depending on the dataset (num. of features). These files are read in the **utils/attacksimulation.py**. 
+
 Usage
 -------
 To run the code to generate experimental results you can simply run the attack.sh script. This script in turns calls another script present in the scripts/Poisoning_attacks directory. Four scripts are provided there depending on the algorithm and the learning rate decay.
