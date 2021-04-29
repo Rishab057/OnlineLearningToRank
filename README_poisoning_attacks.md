@@ -15,4 +15,10 @@ python2 scripts/Poisoning_attacks/attack_DBGD_base_lr.py --data_sets local_MQ200
 
 To know the details for each of the arguments, you can look at the **utils/argparsers/simulationargparser.py** file.
 
+Additionally after running the experiments, 2 additional folders will be created namely **attackerourput** and **attackeraverage**. Graphs can be generated via the **attack_graph.py** script on the averaged out file. Here is an example:
+
+'''
+python3 attack_graph.py attackeraverage/MQ2007/attack/TD_DBGD_frequency_attack_10_res_0_start_1_end_1_half_10000_impressions0.9999977_lrdecay.out
+'''
+
 
