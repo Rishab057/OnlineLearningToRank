@@ -2,7 +2,7 @@
 
 This repository contains the code, that we used to show the robustness of DBGD/MGD based algorithms.
 
-**attacker_weights** folder contains the weights file of the attacker for 4 datasets. Additional weight files can be added here depending on the dataset (num. of features). These files are read in the **utils/attacksimulation.py**. 
+**attacker_weights** folder contains the weight files of the attacker for 4 datasets. Additional weight files can be added here depending on the dataset (num. of features). These files are read in the **utils/attacksimulation.py**. 
 
 Usage
 -------
