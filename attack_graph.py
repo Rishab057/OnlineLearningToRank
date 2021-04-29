@@ -29,7 +29,7 @@ else:
 
 for line in DBGD_output_lines:
 	run_details = json.loads(line)['simulation_arguments']
-	graph_title = run_details['simulation_arguments']['click_models'][0]
+	graph_title = run_details['simulation_arguments']['attacker_click_model']
 	Tau = []
 	num_clicks= []
 

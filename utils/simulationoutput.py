@@ -129,21 +129,8 @@ class SimulationOutput(object):
         self.print_output = simulation_arguments.print_output
         self._expected_runs = dataset.num_runs_per_fold * dataset.num_folds * num_click_models
         self._closed = False
-
-        self.additional_file_name = ""
-        
-        if "freq" in simulation_arguments.click_models[0]:
-            self.additional_file_name = "_"+simulation_arguments.click_models[0]+"_"+str(simulation_arguments.n_results)+"_res_" \
-                                        +str(simulation_arguments.start)+"_start_"+str(simulation_arguments.end)+"_end_"+str(simulation_arguments.mf)+"_mf_"+str(simulation_arguments.sd_const)+"_sd_" \
-                                        +str(simulation_arguments.which)+"_half_"+str(simulation_arguments.n_impressions)+"_impressions"+str(ranker_arguments['learning_rate_decay'])+"_lrdecay"
-
-        else:
-            self.additional_file_name = "_"+simulation_arguments.click_models[0]+"_"+str(simulation_arguments.n_results)+"_res_"+str(simulation_arguments.start)+"_start_"+str(simulation_arguments.end)+"_end_" \
-                                        +str(simulation_arguments.which)+"_half_"+str(simulation_arguments.n_impressions)+"_impressions"+str(ranker_arguments['learning_rate_decay'])+"_lrdecay"
-
         self.output_path = '%s/%s/%s.out' % (self.output_folder, self.dataset_name,
-                                             self.simulation_name+self.additional_file_name)
-
+                                             self.simulation_name)
         combined_args = {
                 'simulation_arguments': vars(simulation_arguments),
                 'ranker_arguments': ranker_arguments,

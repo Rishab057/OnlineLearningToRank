@@ -244,7 +244,7 @@ DATASET_COLLECTION['local_HP2003'] = DataSet('HP2003', '../datasets/HP2003/Fold*
                                                [49,50]       #HITS
                                              ])
 DATASET_COLLECTION['local_MQ2007'] = DataSet('MQ2007',
-                                '/u/rb6xj/OnlineLearningToRank/datasets/MQ2007/Fold*/',
+                                '/home/rishab/Downloads/OnlineLearningToRank/datasets/MQ2007/Fold*/',
                                 'short',
                                        True, 41,
                                        multileave_feat=[

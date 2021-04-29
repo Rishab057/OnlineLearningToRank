@@ -91,12 +91,12 @@ class AttackerOutput(object):
         self.additional_file_name = ""
         
         if "freq" in simulation_arguments.click_models[0]:
-            self.additional_file_name = "_"+simulation_arguments.click_models[0]+"_"+str(simulation_arguments.n_results)+"_res_" \
+            self.additional_file_name = "_"+simulation_arguments.attacker_click_model+"_"+str(simulation_arguments.n_results)+"_res_" \
                                         +str(simulation_arguments.start)+"_start_"+str(simulation_arguments.end)+"_end_"+str(simulation_arguments.mf)+"_mf_"+str(simulation_arguments.sd_const)+"_sd_" \
                                         +str(simulation_arguments.which)+"_half_"+str(simulation_arguments.n_impressions)+"_impressions"+str(ranker_arguments['learning_rate_decay'])+"_lrdecay"
 
         else:
-            self.additional_file_name = "_"+simulation_arguments.click_models[0]+"_"+str(simulation_arguments.n_results)+"_res_"+str(simulation_arguments.start)+"_start_"+str(simulation_arguments.end)+"_end_" \
+            self.additional_file_name = "_"+simulation_arguments.attacker_click_model+"_"+str(simulation_arguments.n_results)+"_res_"+str(simulation_arguments.start)+"_start_"+str(simulation_arguments.end)+"_end_" \
                                         +str(simulation_arguments.which)+"_half_"+str(simulation_arguments.n_impressions)+"_impressions"+str(ranker_arguments['learning_rate_decay'])+"_lrdecay"
 
         self.output_path = '%s/%s/%s.out' % (self.attacker_output_folder, self.dataset_name,
@@ -166,6 +166,7 @@ class AttackerBufferPrintOutput(object):
           "RUN: %d" % run_index,
           "DATAFOLD: %s" % run_details['data folder'],
           "CLICK MODEL: %s" % run_details['click model'],
+          "ATTACKER CLICK MODEL: %s" % run_details['attacker_click_model'],
           "RUN TIME: %s (%.02f seconds)" % (timedelta(seconds=run_details['runtime']),
                                             run_details['runtime'])
         ]

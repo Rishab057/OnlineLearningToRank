@@ -31,8 +31,8 @@ class AttackerAverager(object):
     self.attacker_average_folder = simulation_arguments.attacker_average_folder
     self._average_index = 0
 
-  def click_model_name(self, full_name):
-    return str(full_name[:full_name.rfind('_')])
+  # def click_model_name(self, full_name):
+  #   return str(full_name[:full_name.rfind('_')])
 
   def average_results(self, output_path):
     with open(output_path, 'r') as f:
@@ -40,8 +40,9 @@ class AttackerAverager(object):
       first_run = json.loads(f.readline())
       run_details = first_run['run_details']
 
-      cur_click_model = self.click_model_name(
-        run_details['click model'])
+      cur_click_model = run_details['attacker_click_model'] 
+      # self.click_model_name(
+      #   run_details['click model'])
       runtimes = {
           cur_click_model: [float(run_details['runtime'])],
         }
@@ -72,8 +73,9 @@ class AttackerAverager(object):
         events = json.loads(line)
 
         run_details = events['run_details']
-        cur_click_model = self.click_model_name(
-          run_details['click model'])
+        cur_click_model = run_details['attacker_click_model']
+        # cur_click_model = self.click_model_name(
+        #   run_details['click model'])
         if cur_click_model not in runtimes:
           runtimes[cur_click_model] = []
 
@@ -136,7 +138,7 @@ class AttackerAverager(object):
     self.dataset_path = '%s/%s' % (self.attacker_average_folder, sim_output.dataset_name)
     self.output_path = '%s/%s.out' % (self.dataset_path, sim_output.simulation_name+sim_output.additional_file_name)
 
-    print "Output path inside averager: ", self.output_path
+    # print "Output path inside averager: ", self.output_path
     create_folders(self.dataset_path)
     create_folders(self.output_path)
     with open(self.output_path, 'w') as w:

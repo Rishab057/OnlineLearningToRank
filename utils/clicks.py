@@ -114,37 +114,34 @@ class MaliciousClickModel(object):
     '''
     return self.name + '_' + self.type
 
-  def generate_clicks(self, train_ranking, attacker_ranking, teams, start, end, freq, mf, sd_const):
+  def generate_clicks(self, train_ranking, attacker_ranking, start, end, freq, mf, sd_const):
       
       if self.name == "naive_intersection_attack":
-        return self.naive_intersection_attack(train_ranking, teams, attacker_ranking, start, end)
+        return self.naive_intersection_attack(train_ranking, attacker_ranking, start, end)
       elif self.name == "frequency_attack":
-        return self.frequency_attack(train_ranking, teams, attacker_ranking, freq, mf, start, end, sd_const)
+        return self.frequency_attack(train_ranking, attacker_ranking, freq, mf, start, end, sd_const)
       else:
         print("Attack name is incorrect. Only 'naive_intersection_attack' and 'frequency_attack' are supported!!\n")
 
 
-  def naive_intersection_attack(self, train_ranking, teams, attacker_ranking, start, end):
+  def naive_intersection_attack(self, train_ranking, attacker_ranking, start, end):
     '''
     Generates malicious clicks based on the intersection of train_ranking and attacker_ranking.
     Intersection is guided by start and end hyper-parameters.
     '''
     clicks = []
-    num_exploratory_clicks = 0
 
     for i in range(0, len(train_ranking)):
 
       if (len(attacker_ranking) >= end and train_ranking[i] in attacker_ranking[start:end]):
-        if teams[i] == 1:
-            num_exploratory_clicks += 1
         clicks.append(True)
       else:
         clicks.append(False)
 
-    return np.zeros(train_ranking.shape, dtype=bool) + clicks, num_exploratory_clicks
+    return np.zeros(train_ranking.shape, dtype=bool) + clicks
 
 
-  def frequency_attack(self, train_ranking, teams, attacker_ranking, freq, mf, start, end, sd_const):
+  def frequency_attack(self, train_ranking, attacker_ranking, freq, mf, start, end, sd_const):
     '''
     Generates malicious clicks based on the intersection of train_ranking and attacker_ranking.
     Intersection is guided by start and end hyper-parameters.
@@ -166,10 +163,9 @@ class MaliciousClickModel(object):
         i += 1
 
     clicks = []
-    num_exploratory_clicks = 0
 
     # Finding the standard deviation of top-k frequency list
-    sd = np.std(top_k_freq)
+    sd = np.std(top_k_freq) if (len(top_k_freq) > 0) else 0
 
     # Finding the index of position which is atleast sd_const standard deviations away. If such position is not found then mf will be over-rided otherwise not.
     ind = len(top_k_freq) 
@@ -181,13 +177,11 @@ class MaliciousClickModel(object):
     # Generating the clicks using the intersection and also making sure that the document is not one of the most frequent documents
     for i in range(0, len(train_ranking)):
       if train_ranking[i] not in top_k_docs[0:ind] and train_ranking[i] in attacker_ranking[start:end]:
-        if teams[i] == 1:
-            num_exploratory_clicks += 1
         clicks.append(True)
       else:
         clicks.append(False)
 
-    return np.zeros(train_ranking.shape, dtype=bool) + clicks, num_exploratory_clicks
+    return np.zeros(train_ranking.shape, dtype=bool) + clicks
 
 
 # create synonyms for keywords to ease command line use

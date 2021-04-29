@@ -27,7 +27,7 @@ class AttackSimulation(object):
     self.which = sim_args.which
     self.start = sim_args.start
     self.end = sim_args.end
-    self.user_click_model = sim_args.user_click_model
+    self.attacker_click_model = sim_args.attacker_click_model
     self.num_attacker_relevant = sim_args.num_attacker_relevant
 
     if not self.train_only:
@@ -42,6 +42,7 @@ class AttackSimulation(object):
             'data folder': str(self.datafold.data_path),
             'held-out data': str(self.datafold.heldout_tag),
             'click model': self.click_model.get_name(),
+            'attacker_click_model': self.attacker_click_model,
           }
     self.output_queue = output_queue
 
@@ -164,19 +165,19 @@ class AttackSimulation(object):
   def run(self, ranker, output_key, attacker_output_key):
     starttime = time.time()
 
-    if "frequency" in self.click_model.name:
-      print "Name: ", self.click_model.name, " n_res:", self.n_results, " start:", self.start, " end:", self.end, " mf:", self.mf, " sd:", self.sd_const
+    if "frequency" in self.attacker_click_model:
+      print "Name: ", self.attacker_click_model, " n_res:", self.n_results, " start:", self.start, " end:", self.end, " mf:", self.mf, " sd:", self.sd_const
 
     else:
-      print "Name: ", self.click_model.name, " n_res:", self.n_results, " start:", self.start, " end:", self.end
+      print "Name: ", self.attacker_click_model, " n_res:", self.n_results, " start:", self.start, " end:", self.end
 
     ranker.setup(train_features = self.datafold.train_feature_matrix,
                  train_query_ranges = self.datafold.train_doclist_ranges)
 
 
     #Get the normal user click model, and the attacker weights
-    normal_click_model = get_click_models([self.user_click_model] + [self.datafold.click_model_type])[0]
-    attacker_weights = get_attacker_weights(self.datafold.name)
+    attacker_click_model = get_click_models([self.attacker_click_model] + [self.datafold.click_model_type])[0]
+    attacker_weights = get_attacker_weights(self.datafold.name, self.datafold.train_feature_matrix.shape[1])
 
     run_results = []
     attacker_results = []
@@ -185,7 +186,6 @@ class AttackSimulation(object):
     noac = []
     queries_attacked = 0
     queries_attacked_per_1000 = 0
-    noexpl_total = 0
 
     repeat = 0
     winners = 0
@@ -239,7 +239,7 @@ class AttackSimulation(object):
         # If attack needs to be done, find which attack
 
         freq = {}
-        if self.click_model.name == "frequency_attack":
+        if self.attacker_click_model == "frequency_attack":
           # If it is frequency attack then repeat the same query 9 times
           for i in range(0, 9):
             if iteration > self.n_impressions:
@@ -264,7 +264,7 @@ class AttackSimulation(object):
                   ik += 1
 
             # Find standard deviation of the top-10 frequent list
-            sd = np.std(top_k)
+            sd = np.std(top_k) if (len(top_k) > 0) else 0
 
             if(i < 8):
               # Doing evaluation in every iteration even when no clicks are happening
@@ -284,13 +284,12 @@ class AttackSimulation(object):
               if found:
                 break;
       
-        teams = ranker.multileaving.teams
+        # teams = ranker.multileaving.teams (Only present in TD-DBGD and not in PMGD)
         # Generating malicious clicks
-        clicks, noexpl = self.click_model.generate_clicks(train_ranking, attacker_ranking, teams, self.start, self.end, freq, self.mf, self.sd_const)
-        noexpl_total += noexpl
+        clicks = attacker_click_model.generate_clicks(train_ranking, attacker_ranking, self.start, self.end, freq, self.mf, self.sd_const)
 
       else:
-        clicks = normal_click_model.generate_clicks(train_ranking, ranking_labels)
+        clicks = self.click_model.generate_clicks(train_ranking, ranking_labels)
 
       if iteration <= self.n_impressions:
         self.test_evaluation(attacker_results, iteration, ranker, clicks, self.n_results, ranker.model.learning_rate, attacker_weights)       
@@ -300,6 +299,9 @@ class AttackSimulation(object):
         ranker.process_clicks(clicks)
         noc += np.count_nonzero(clicks)
         iteration += 1
+      
+      else:
+        break;
 
     ranking_i, train_ranking = self.sample_and_rank(ranker)
     ranking_labels =  self.datafold.train_query_labels(ranking_i)
@@ -383,9 +385,9 @@ def get_attacker_ranking(features, attacker_weights):
     attacker_ranking = list(map(lambda x: x[1], attacker_score_document_pair))
     return attacker_ranking
 
-def get_attacker_weights(name):
+def get_attacker_weights(name, dimension):
     '''
-    Get the attacker weights from the given dataset name.
+    Get the attacker weights from the given dataset name. dimension is required if weight file does not exist.
     '''
     if "MSLR" in name:
       attacker_weights_file = open("attacker_weights/Weights_web10k.txt","r")
@@ -396,7 +398,9 @@ def get_attacker_weights(name):
     elif "2003" in name:
       attacker_weights_file = open("attacker_weights/Weights_td2003.txt","r")
     else:
-      print("Weight file not specified")
+      print("Attacker weights for the given dataset are not present. Giving zero weights.")
+      attacker_weights = np.zeros((dimension,1), dtype=float)
+      return attacker_weights
 
     attacker_weights_lines = attacker_weights_file.read().split(',')
     attacker_weights_lines = [float(i) for i in attacker_weights_lines]

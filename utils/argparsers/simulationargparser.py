@@ -54,7 +54,7 @@ class SimulationArgumentParser(argparse.ArgumentParser):
     self._sim_add_argument('--small_dataset', dest='small_dataset', action='store_false',
                       help='Set true if dataset is small and memory is never a concern.')
 
-    self._sim_add_argument('--click_models', dest='click_models', type=str, required=True,
+    self._sim_add_argument('--click_models', dest='click_models', default='exper1', type=str, required=True,
                       help='Click models to be used.', nargs='+')
 
     self._sim_add_argument('--print_freq', dest='print_freq', type=int, required=False,
@@ -107,10 +107,10 @@ class SimulationArgumentParser(argparse.ArgumentParser):
                       help='Which documents to intersect (end)')
 
     self._sim_add_argument('--which', dest='which', default=-1, type=int,
-                      help='Which half of the portion to attack. (First 2000, Second 2000 etc.)')
+                      help='Which half of the portion to attack. (First 2000, Second 2000 etc.). Possible values include (0 [all attack], 1, 2, 3 4, 5)')
 
-    self._sim_add_argument('--user_click_model', dest='user_click_model', default='exper1', type=str,
-                      help='Name of normal user click model')
+    self._sim_add_argument('--attacker_click_model', dest='attacker_click_model', default='naive_intersection_attack', type=str,
+                      help="Name of the attacker's click model. Possible names include (naive_intersection_attack, frequency_attack)")
 
     self._sim_add_argument('--num_attacker_relevant', dest='num_attacker_relevant', default=5, type=int,
                       help='How many documents in attacker ranking are relevant to the attacker')
