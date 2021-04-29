@@ -8,9 +8,9 @@ To run the code to generate experimental results you can simply run the attack.s
 
 An example of such a script is given:
 ```
-python2 ./scripts/Poisoning_attacks/attack_DBGD_base_lr.py --data_sets local_MQ2007_F1 --click_models frequency_attack\
-       --user_click_model exper1 --log_folder ./log --output_folder ./output --average_folder ./average \
-       --n_impr 10000 --n_runs 1 --n_proc 10 --n_results 10 --start 0 --end 1 --which 3 --mf 5 --sd_const 2.0
+python2 scripts/Poisoning_attacks/attack_DBGD_base_lr.py --data_sets local_MQ2007 --attacker_click_model frequency_attack\
+       --click_models exper1 --log_folder ./log --output_folder ./output --average_folder ./average \
+       --n_impr 10000 --n_runs 10 --n_proc 10 --n_results 10 --start 0 --end 1 --which 1 --mf 5 --sd_const 2.0 --num_attacker_relevant 5
 ```                 
 
 To know the details for each of the arguments, you can look at the **utils/argparsers/simulationargparser.py** file.
